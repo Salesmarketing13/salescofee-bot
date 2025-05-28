@@ -6,11 +6,8 @@ TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
 user_data = {}
-
-# Стан користувача
 user_state = {}
 
-# Запитання по черзі
 questions = [
     "1. Як я можу до вас звертатися? (Ім'я та прізвище)",
     "2. Скільки вам років?",
@@ -23,6 +20,7 @@ questions = [
 @bot.message_handler(commands=['start'])
 def start(message):
     chat_id = message.chat.id
+    print(f"Start command received from user {chat_id}")
     user_data[chat_id] = []
     user_state[chat_id] = 0
 
@@ -32,17 +30,17 @@ def start(message):
 @bot.message_handler(func=lambda message: True, content_types=['text', 'contact'])
 def handle_message(message):
     chat_id = message.chat.id
+    print(f"Message received from {chat_id}: {message.text}")
 
-    # Перевірка на наявність стану
     if chat_id not in user_state:
         bot.send_message(chat_id, "Натисніть /start щоб почати")
         return
 
-    # Якщо останнє питання (контакт)
     if user_state[chat_id] == len(questions):
         if message.contact and message.contact.phone_number:
             user_data[chat_id].append(f"Телефон: {message.contact.phone_number}")
             bot.send_message(chat_id, "☕️ Дякуємо за ваші відповіді! Щоб отримати свою каву, зверніться до барісти і покажіть це повідомлення. Гарного дня! 😺")
+            print(f"Contact received from {chat_id}: {message.contact.phone_number}")
             del user_state[chat_id]
         else:
             bot.send_message(chat_id, "‼️ Будь ласка, натисніть кнопку нижче, щоб поділитися контактом.")
@@ -52,18 +50,16 @@ def handle_message(message):
             bot.send_message(chat_id, "Для підтвердження анкети і отримання безкоштовної кави поділіться своїм контактом. Обіцяємо, що не будемо набридати 😊", reply_markup=request_contact_keyboard)
         return
 
-    # Зберігаємо відповідь
     user_data[chat_id].append(message.text)
     user_state[chat_id] += 1
 
-    # Наступне питання або запит контакту
     if user_state[chat_id] < len(questions):
         bot.send_message(chat_id, questions[user_state[chat_id]])
     else:
-        # Переходимо до запиту контакту
         request_contact_keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
         contact_button = KeyboardButton(text="Поділитися номером", request_contact=True)
         request_contact_keyboard.add(contact_button)
         bot.send_message(chat_id, "Для підтвердження анкети і отримання безкоштовної кави поділіться своїм контактом. Обіцяємо, що не будемо набридати 😊", reply_markup=request_contact_keyboard)
 
+print("Bot is polling...")
 bot.polling()
